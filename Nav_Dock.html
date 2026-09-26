@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meniscus Dock</title>
+<style>
+  :root{
+    --bg:#0a0713; --bg2:#120c1e; --surface:#171025; --rim: rgba(255,255,255,.10);
+    --text:#efe9fb; --muted:#8d84a3;
+    --accent:#b6e26a; --accent-rgb:182,226,106;
+  }
+  *{box-sizing:border-box;}
+  html{overflow-x:hidden;}
+  body{
+    margin:0;min-height:100vh;
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;align-items:center;
+    padding:10vh 6vw calc(120px + env(safe-area-inset-bottom,0px));
+    position:relative;
+  }
+  .glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:radial-gradient(60vw 50vh at 50% 40%, rgba(var(--accent-rgb),.16), transparent 70%);
+    transition:background 700ms cubic-bezier(.16,1,.3,1);}
+  .stage{position:relative;z-index:1;max-width:640px;text-align:center;margin-top:6vh;}
+  h1{font-size:clamp(2.1rem,6vw,3.4rem);font-weight:600;letter-spacing:-.02em;line-height:1.08;margin:0 0 .6rem;}
+  p.sub{font-size:clamp(1rem,2.4vw,1.15rem);color:var(--muted);margin:0;}
+  .fade{transition:opacity 220ms cubic-bezier(.16,1,.3,1), transform 260ms cubic-bezier(.16,1,.3,1);}
+  .fade-out{opacity:0;transform:translateY(6px);}
+
+  .content{position:relative;z-index:1;width:100%;max-width:520px;margin-top:6vh;}
+  .sk{border-radius:14px;background:linear-gradient(100deg, rgba(255,255,255,.05) 30%, rgba(255,255,255,.11) 45%, rgba(255,255,255,.05) 60%);
+    background-size:250% 100%;animation:shimmer 1.7s ease-in-out infinite;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-50% 0}}
+  .sk-hero{height:130px;margin-bottom:22px;}
+  .sk-row{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+  .sk-dot{width:38px;height:38px;border-radius:50%;flex:none;}
+  .sk-lines{flex:1;display:flex;flex-direction:column;gap:8px;}
+  .sk-line{height:11px;border-radius:6px;}
+  .sk-line.w1{width:70%;} .sk-line.w2{width:45%;}
+
+  .dockwrap{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:center;
+    padding:0 6vw calc(14px + env(safe-area-inset-bottom,0px));pointer-events:none;}
+  .dock{position:relative;width:100%;max-width:440px;height:88px;pointer-events:auto;touch-action:none;}
+  svg.plate{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;display:block;
+    transition:opacity 420ms cubic-bezier(.16,1,.3,1);}
+  svg.plate.hide{opacity:0;}
+  #plate{fill:linear-gradient(180deg,var(--surface),var(--bg2));fill:var(--surface);stroke:var(--rim);stroke-width:1;}
+
+  .row{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:space-between;padding:0 20px;
+    transition:opacity 260ms cubic-bezier(.16,1,.3,1);}
+  .row.hide{opacity:0;pointer-events:none;}
+  .item{position:relative;appearance:none;border:none;background:transparent;color:var(--muted);
+    display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:26px;flex:1;cursor:pointer;}
+  .item svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;transition:opacity 260ms;}
+  .item .label{font-size:.66rem;letter-spacing:.01em;height:12px;opacity:0;transition:opacity 260ms cubic-bezier(.16,1,.3,1);color:var(--accent);}
+  .item.active svg{opacity:0;}
+  .item.active .label{opacity:1;}
+  .item:focus-visible{outline:2px solid rgba(var(--accent-rgb),.8);outline-offset:3px;border-radius:8px;}
+
+  .bead{
+    position:absolute; left:0; top:-10.8px; width:40.8px;height:40.8px;border-radius:50%;
+    transform:translateX(0);
+    background:radial-gradient(circle at 34% 28%, rgba(255,255,255,.95), rgba(var(--accent-rgb),.95) 45%, rgba(var(--accent-rgb),.8) 100%);
+    box-shadow:0 0 0 1px rgba(255,255,255,.25) inset, 0 2px 3px rgba(0,0,0,.4),
+      0 0 14px 2px rgba(var(--accent-rgb),.85), 0 0 40px 10px rgba(var(--accent-rgb),.35);
+    cursor:grab; touch-action:none; z-index:2;
+  }
+  .bead.dragging{cursor:grabbing;}
+
+  .fly-icon{position:absolute;fill:none;stroke-width:1.7;width:20px;height:20px;pointer-events:none;z-index:3;
+    transform-origin:50% 50%;will-change:transform;}
+  .bead-icon{left:50%;top:50%;transform:translate(-50%,-50%) scale(1.5);}
+
+  @media (prefers-reduced-motion:reduce){ * { transition-duration:60ms !important; } }
+</style>
+</head>
+<body>
+  <div class="glow" id="glow"></div>
+  <div class="stage">
+    <h1 id="title" class="fade">Everything, on one surface.</h1>
+    <p class="sub fade" id="sub">Home gathers the rest.</p>
+  </div>
+
+  <div class="content" id="content"></div>
+
+  <div class="dockwrap">
+    <div class="dock" id="dock">
+      <svg class="plate" id="plateSvg" preserveAspectRatio="none"><path id="plate"></path></svg>
+      <div class="bead" id="bead"></div>
+      <div class="row" id="row">
+        <button class="item active" data-i="0" data-accent="182,226,106" data-icon="home" data-title="Everything, on one surface." data-sub="Home gathers the rest."><svg viewBox="0 0 24 24"></svg><span class="label">Home</span></button>
+        <button class="item" data-i="1" data-accent="139,127,216" data-icon="profile" data-title="You, as you actually are." data-sub="Nothing performed. Nothing hidden."><svg viewBox="0 0 24 24"></svg><span class="label">Profile</span></button>
+        <button class="item" data-i="2" data-accent="255,154,82" data-icon="messages" data-title="Three unread. All of them kind." data-sub="Nothing urgent. Nothing ignored."><svg viewBox="0 0 24 24"></svg><span class="label">Messages</span></button>
+        <button class="item" data-i="3" data-accent="79,209,197" data-icon="camera" data-title="Held steady, for once." data-sub="The moment stays still while you move."><svg viewBox="0 0 24 24"></svg><span class="label">Camera</span></button>
+        <button class="item" data-i="4" data-accent="255,95,168" data-icon="settings" data-title="Fewer switches. Better defaults." data-sub="Everything set the way it should be."><svg viewBox="0 0 24 24"></svg><span class="label">Settings</span></button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const ICONS={
+    home:'<path d="M4 11.5 12 5l8 6.5"/><path d="M6 10.5V19a1 1 0 0 0 1 1h4v-5h2v5h4a1 1 0 0 0 1-1v-8.5"/>',
+    profile:'<circle cx="12" cy="8.5" r="3.4"/><path d="M5 20c1.2-4 4-6 7-6s5.8 2 7 6"/>',
+    messages:'<path d="M4 6h16v11H8l-4 4V6Z"/><path d="M8 10h8M8 13h5"/>',
+    camera:'<path d="M4 8h3l1.6-2.2h6.8L17 8h3v11H4V8Z"/><circle cx="12" cy="13.5" r="3.4"/>',
+    settings:'<circle cx="12" cy="12" r="2.6"/><path d="M12 3v3M12 18v3M4 12H1M23 12h-3M6 6 4 4M20 20l-2-2M6 18l-2 2M20 4l-2 2"/>'
+  };
+  const root=document.documentElement;
+  const dock=document.getElementById('dock');
+  const plateSvg=document.getElementById('plateSvg');
+  const plate=document.getElementById('plate');
+  const bead=document.getElementById('bead');
+  const items=Array.from(document.querySelectorAll('.item'));
+  const row=document.getElementById('row');
+  const titleEl=document.getElementById('title');
+  const subEl=document.getElementById('sub');
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  items.forEach(it=>{ it.querySelector('svg').innerHTML=ICONS[it.dataset.icon]; });
+
+  // skeleton placeholder content (demo only — no real data)
+  const content=document.getElementById('content');
+  let sk='<div class="sk sk-hero"></div>';
+  for(let i=0;i<10;i++){
+    sk+='<div class="sk-row"><div class="sk sk-dot"></div><div class="sk-lines"><div class="sk sk-line w1"></div><div class="sk sk-line w2"></div></div></div>';
+  }
+  content.innerHTML=sk;
+
+  const RB=16.8, S=20, BY=5, CORNER=22;
+  let W=0,H=88, rects=[], active=0, curX=0, dragging=false, dockRect=null;
+  let rafId=null, lastX=0, lastT=0;
+
+  function reachOf(s){ const a=s+RB,b=s-BY; return Math.sqrt(Math.max(0,a*a-b*b)); }
+  function lerp(A,B,t){ return {x:A.x+(B.x-A.x)*t, y:A.y+(B.y-A.y)*t}; }
+
+  function buildPath(bx, sL, sR){
+    const rL=reachOf(sL), rR=reachOf(sR);
+    const PL1={x:bx-rL,y:0}, PR1={x:bx+rR,y:0};
+    const CL={x:bx-rL,y:sL}, CR={x:bx+rR,y:sR};
+    const B={x:bx,y:BY};
+    const PL2=lerp(CL,B, sL/(sL+RB));
+    const PR2=lerp(CR,B, sR/(sR+RB));
+    return `M${CORNER} 0 L${PL1.x} 0 A${sL} ${sL} 0 0 1 ${PL2.x} ${PL2.y} A${RB} ${RB} 0 0 1 ${PR2.x} ${PR2.y} A${sR} ${sR} 0 0 1 ${PR1.x} 0 L${W-CORNER} 0 A${CORNER} ${CORNER} 0 0 1 ${W} ${CORNER} L${W} ${H-CORNER} A${CORNER} ${CORNER} 0 0 1 ${W-CORNER} ${H} L${CORNER} ${H} A${CORNER} ${CORNER} 0 0 1 0 ${H-CORNER} L0 ${CORNER} A${CORNER} ${CORNER} 0 0 1 ${CORNER} 0 Z`;
+  }
+
+  function render(bx, vel){
+    vel=vel||0;
+    const VNORM=30;
+    const mag=Math.min(1, Math.abs(vel)/VNORM);
+    const q=Math.max(-1, Math.min(1, vel/VNORM));
+    const sL=S*(1+.06*mag+.40*q);
+    const sR=S*(1+.06*mag-.40*q);
+    plate.setAttribute('d', buildPath(bx, sL, sR));
+    bead.style.transform=`translateX(${bx-RB}px)`;
+  }
+
+  function measure(){
+    const dr=dock.getBoundingClientRect();
+    dockRect=dr; W=dr.width; H=dr.height;
+    plateSvg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    rects=items.map(it=>{ const r=it.getBoundingClientRect(); return r.left-dr.left+r.width/2; });
+  }
+
+  function setAccent(rgb){
+    root.style.setProperty('--accent-rgb', rgb);
+    const [r,g,b]=rgb.split(',').map(Number);
+    root.style.setProperty('--accent', `rgb(${r},${g},${b})`);
+  }
+
+  function swapText(t,s){
+    const d=reduced?40:220;
+    titleEl.classList.add('fade-out'); subEl.classList.add('fade-out');
+    setTimeout(()=>{ titleEl.textContent=t; subEl.textContent=s; titleEl.classList.remove('fade-out'); subEl.classList.remove('fade-out'); }, d);
+  }
+
+  function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; }
+
+  function animateTo(targetX){
+    if(rafId) cancelAnimationFrame(rafId);
+    const startX=curX, dist=targetX-startX, dur=reduced?120:600, t0=performance.now();
+    let prevX=startX, prevT=t0;
+    function step(now){
+      const t=Math.min(1,(now-t0)/dur);
+      const e=easeInOutCubic(t);
+      curX=startX+dist*e;
+      const dt=Math.max(1,now-prevT);
+      const vel=(curX-prevX)/(dt/16.7);
+      render(curX, vel);
+      prevX=curX; prevT=now;
+      if(t<1) rafId=requestAnimationFrame(step); else render(curX,0);
+    }
+    rafId=requestAnimationFrame(step);
+  }
+
+  let liftedIcon=null;
+  function settleIconOnBead(itemEl){
+    const clone=itemEl.querySelector('svg').cloneNode(true);
+    clone.classList.add('fly-icon','bead-icon');
+    clone.style.stroke='#000';
+    bead.appendChild(clone);
+    liftedIcon=clone;
+  }
+
+  function liftIcon(itemEl, instant){
+    if(liftedIcon){ liftedIcon.remove(); liftedIcon=null; }
+    if(instant || reduced){ settleIconOnBead(itemEl); return; }
+
+    const dockR=dock.getBoundingClientRect();
+    const beadR=bead.getBoundingClientRect();
+    const srcSvg=itemEl.querySelector('svg');
+    const r=srcSvg.getBoundingClientRect();
+    const flying=srcSvg.cloneNode(true);
+    flying.classList.add('fly-icon');
+    flying.style.left=(r.left-dockR.left)+'px';
+    flying.style.top=(r.top-dockR.top)+'px';
+    flying.style.stroke=getComputedStyle(itemEl).color;
+    flying.style.transform='translate(0,0) scale(1)';
+    flying.style.transition='transform 600ms cubic-bezier(.45,0,.15,1), stroke 600ms cubic-bezier(.45,0,.15,1)';
+    dock.appendChild(flying);
+
+    // exact bead center, in the same coordinate space as the flying clone
+    const dx=beadR.width/2-RB; // the clicked item's column sits under this constant offset from bead-left
+    const beadCenterY=(beadR.top-dockR.top)+beadR.height/2;
+    const iconCenterY=(r.top-dockR.top)+r.height/2;
+    const dy=beadCenterY-iconCenterY;
+
+    requestAnimationFrame(()=>{
+      flying.style.transform=`translate(${dx}px, ${dy}px) scale(1.5)`;
+      flying.style.stroke='#000';
+    });
+
+    liftedIcon=flying;
+    setTimeout(()=>{
+      if(liftedIcon===flying){ flying.remove(); settleIconOnBead(itemEl); }
+    }, 600);
+  }
+
+  function activate(i, skipAnim){
+    const el=items[i]; active=i;
+    items.forEach(it=>it.classList.toggle('active', it===el));
+    setAccent(el.dataset.accent);
+    swapText(el.dataset.title, el.dataset.sub);
+    liftIcon(el, skipAnim);
+    if(skipAnim){ curX=rects[i]; render(curX,0); } else { animateTo(rects[i]); }
+  }
+
+  items.forEach(it=>{
+    it.addEventListener('click', ()=>{ const i=Number(it.dataset.i); if(i!==active) activate(i); });
+    it.addEventListener('keydown', e=>{
+      const i=Number(it.dataset.i);
+      if(e.key==='ArrowRight'){ e.preventDefault(); (items[i+1]||items[0]).focus(); }
+      if(e.key==='ArrowLeft'){ e.preventDefault(); (items[i-1]||items[items.length-1]).focus(); }
+    });
+  });
+
+  bead.addEventListener('pointerdown', e=>{
+    if(collapsed) return;
+    dragging=true; bead.classList.add('dragging'); bead.setPointerCapture(e.pointerId);
+    if(rafId) cancelAnimationFrame(rafId);
+    measure(); lastX=curX; lastT=performance.now();
+  });
+  bead.addEventListener('pointermove', e=>{
+    if(!dragging) return;
+    const x=Math.max(rects[0], Math.min(rects[rects.length-1], e.clientX-dockRect.left));
+    const now=performance.now(); const dt=Math.max(1,now-lastT);
+    const vel=(x-lastX)/(dt/16.7);
+    curX=x; render(x, vel);
+    lastX=x; lastT=now;
+    let nearest=0,best=Infinity;
+    rects.forEach((rx,idx)=>{ const d=Math.abs(rx-x); if(d<best){best=d;nearest=idx;} });
+    if(nearest!==active){
+      const el=items[nearest]; active=nearest;
+      items.forEach(it=>it.classList.toggle('active', it===el));
+      setAccent(el.dataset.accent);
+      swapText(el.dataset.title, el.dataset.sub);
+      liftIcon(el, true);
+    }
+  });
+  function endDrag(){ if(!dragging) return; dragging=false; bead.classList.remove('dragging'); animateTo(rects[active]); }
+  bead.addEventListener('pointerup', endDrag);
+  bead.addEventListener('pointercancel', endDrag);
+
+  window.addEventListener('resize', ()=>{ measure(); if(!collapsed){ curX=rects[active]; render(curX,0); } });
+
+  let collapsed=false;
+  function collapse(){
+    if(collapsed) return; collapsed=true;
+    row.classList.add('hide'); plateSvg.classList.add('hide');
+    animateTo(W/2);
+  }
+  function expand(){
+    if(!collapsed) return; collapsed=false;
+    measure();
+    row.classList.remove('hide'); plateSvg.classList.remove('hide');
+    animateTo(rects[active]);
+  }
+  let lastScrollY=window.scrollY;
+  window.addEventListener('scroll', ()=>{
+    const y=window.scrollY;
+    if(y>lastScrollY && y>15){ collapse(); }
+    else if(y<lastScrollY){ expand(); }
+    lastScrollY=y;
+  }, {passive:true});
+  bead.addEventListener('click', ()=>{ if(collapsed) expand(); });
+
+  measure();
+  curX=rects[0];
+  liftIcon(items[0], true);
+  render(curX,0);
+})();
+</script>
+</body>
+</html>
