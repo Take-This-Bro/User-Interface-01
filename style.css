@@ -1,0 +1,69 @@
+:root{
+  --bg:#0a0713; --bg2:#120c1e; --surface:#171025; --rim: rgba(255,255,255,.10);
+  --text:#efe9fb; --muted:#8d84a3;
+  --accent:#b6e26a; --accent-rgb:182,226,106;
+}
+*{box-sizing:border-box;}
+html{overflow-x:hidden;}
+body{
+  margin:0;min-height:100vh;
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  display:flex;flex-direction:column;align-items:center;
+  padding:10vh 6vw calc(120px + env(safe-area-inset-bottom,0px));
+  position:relative;
+}
+.glow{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(60vw 50vh at 50% 40%, rgba(var(--accent-rgb),.16), transparent 70%);
+  transition:background 700ms cubic-bezier(.16,1,.3,1);}
+.stage{position:relative;z-index:1;max-width:640px;text-align:center;margin-top:6vh;}
+h1{font-size:clamp(2.1rem,6vw,3.4rem);font-weight:600;letter-spacing:-.02em;line-height:1.08;margin:0 0 .6rem;}
+p.sub{font-size:clamp(1rem,2.4vw,1.15rem);color:var(--muted);margin:0;}
+.fade{transition:opacity 220ms cubic-bezier(.16,1,.3,1), transform 260ms cubic-bezier(.16,1,.3,1);}
+.fade-out{opacity:0;transform:translateY(6px);}
+
+.content{position:relative;z-index:1;width:100%;max-width:520px;margin-top:6vh;}
+.sk{border-radius:14px;background:linear-gradient(100deg, rgba(255,255,255,.05) 30%, rgba(255,255,255,.11) 45%, rgba(255,255,255,.05) 60%);
+  background-size:250% 100%;animation:shimmer 1.7s ease-in-out infinite;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-50% 0}}
+.sk-hero{height:130px;margin-bottom:22px;}
+.sk-row{display:flex;align-items:center;gap:14px;margin-bottom:18px;}
+.sk-dot{width:38px;height:38px;border-radius:50%;flex:none;}
+.sk-lines{flex:1;display:flex;flex-direction:column;gap:8px;}
+.sk-line{height:11px;border-radius:6px;}
+.sk-line.w1{width:70%;} .sk-line.w2{width:45%;}
+
+.dockwrap{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;justify-content:center;
+  padding:0 6vw calc(14px + env(safe-area-inset-bottom,0px));pointer-events:none;}
+.dock{position:relative;width:100%;max-width:440px;height:88px;pointer-events:auto;touch-action:none;}
+svg.plate{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;display:block;
+  transition:opacity 420ms cubic-bezier(.16,1,.3,1);}
+svg.plate.hide{opacity:0;}
+#plate{fill:linear-gradient(180deg,var(--surface),var(--bg2));fill:var(--surface);stroke:var(--rim);stroke-width:1;}
+
+.row{position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:space-between;padding:0 20px;
+  transition:opacity 260ms cubic-bezier(.16,1,.3,1);}
+.row.hide{opacity:0;pointer-events:none;}
+.item{position:relative;appearance:none;border:none;background:transparent;color:var(--muted);
+  display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:26px;flex:1;cursor:pointer;}
+.item svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;transition:opacity 260ms;}
+.item .label{font-size:.66rem;letter-spacing:.01em;height:12px;opacity:0;transition:opacity 260ms cubic-bezier(.16,1,.3,1);color:var(--accent);}
+.item.active svg{opacity:0;}
+.item.active .label{opacity:1;}
+.item:focus-visible{outline:2px solid rgba(var(--accent-rgb),.8);outline-offset:3px;border-radius:8px;}
+
+.bead{
+  position:absolute; left:0; top:-10.8px; width:40.8px;height:40.8px;border-radius:50%;
+  transform:translateX(0);
+  background:radial-gradient(circle at 34% 28%, rgba(255,255,255,.95), rgba(var(--accent-rgb),.95) 45%, rgba(var(--accent-rgb),.8) 100%);
+  box-shadow:0 0 0 1px rgba(255,255,255,.25) inset, 0 2px 3px rgba(0,0,0,.4),
+    0 0 14px 2px rgba(var(--accent-rgb),.85), 0 0 40px 10px rgba(var(--accent-rgb),.35);
+  cursor:grab; touch-action:none; z-index:2;
+}
+.bead.dragging{cursor:grabbing;}
+
+.fly-icon{position:absolute;fill:none;stroke-width:1.7;width:20px;height:20px;pointer-events:none;z-index:3;
+  transform-origin:50% 50%;will-change:transform;}
+.bead-icon{left:50%;top:50%;transform:translate(-50%,-50%) scale(1.5);}
+
+@media (prefers-reduced-motion:reduce){ * { transition-duration:60ms !important; } }
