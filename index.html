@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meniscus Dock</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="glow" id="glow"></div>
+  <div class="stage">
+    <h1 id="title" class="fade">Everything, on one surface.</h1>
+    <p class="sub fade" id="sub">Home gathers the rest.</p>
+  </div>
+
+  <div class="content" id="content"></div>
+
+  <div class="dockwrap">
+    <div class="dock" id="dock">
+      <svg class="plate" id="plateSvg" preserveAspectRatio="none"><path id="plate"></path></svg>
+      <div class="bead" id="bead"></div>
+      <div class="row" id="row">
+        <button class="item active" data-i="0" data-accent="182,226,106" data-icon="home" data-title="Everything, on one surface." data-sub="Home gathers the rest."><svg viewBox="0 0 24 24"></svg><span class="label">Home</span></button>
+        <button class="item" data-i="1" data-accent="139,127,216" data-icon="profile" data-title="You, as you actually are." data-sub="Nothing performed. Nothing hidden."><svg viewBox="0 0 24 24"></svg><span class="label">Profile</span></button>
+        <button class="item" data-i="2" data-accent="255,154,82" data-icon="messages" data-title="Three unread. All of them kind." data-sub="Nothing urgent. Nothing ignored."><svg viewBox="0 0 24 24"></svg><span class="label">Messages</span></button>
+        <button class="item" data-i="3" data-accent="79,209,197" data-icon="camera" data-title="Held steady, for once." data-sub="The moment stays still while you move."><svg viewBox="0 0 24 24"></svg><span class="label">Camera</span></button>
+        <button class="item" data-i="4" data-accent="255,95,168" data-icon="settings" data-title="Fewer switches. Better defaults." data-sub="Everything set the way it should be."><svg viewBox="0 0 24 24"></svg><span class="label">Settings</span></button>
+      </div>
+    </div>
+  </div>
+
+<script src="script.js"></script>
+</body>
+</html>
